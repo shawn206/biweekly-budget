@@ -1,0 +1,323 @@
+﻿const STORAGE_KEY = "biweeklyBudgetData";
+const PERIOD_DAYS = 14;
+let memoryStore = null;
+
+const setupForm = document.getElementById("setup-form");
+const spendForm = document.getElementById("spend-form");
+const startDateInput = document.getElementById("start-date");
+const totalBudgetInput = document.getElementById("total-budget");
+const spendDateInput = document.getElementById("spend-date");
+const spendAmountInput = document.getElementById("spend-amount");
+const resetBtn = document.getElementById("reset-btn");
+const entriesBody = document.getElementById("entries-body");
+const meterTicks = document.getElementById("meter-ticks");
+
+const statTotal = document.getElementById("stat-total");
+const statSpent = document.getElementById("stat-spent");
+const statRemaining = document.getElementById("stat-remaining");
+const statDaysLeft = document.getElementById("stat-days-left");
+const meterFill = document.getElementById("meter-fill");
+
+const todayIso = new Date().toISOString().split("T")[0];
+spendDateInput.value = todayIso;
+
+function storageAvailable() {
+  try {
+    localStorage.setItem("__budget_test__", "1");
+    localStorage.removeItem("__budget_test__");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const canUseLocalStorage = storageAvailable();
+
+function currency(value) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function parseSpendExpression(rawInput) {
+  const cleaned = String(rawInput || "").replace(/\s+/g, "");
+  if (!cleaned) {
+    throw new Error("Enter an amount.");
+  }
+  if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(cleaned)) {
+    throw new Error("Use amounts like 12.50 or sums like 8.50+7.20.");
+  }
+
+  const total = cleaned
+    .split("+")
+    .map((part) => Number(part))
+    .reduce((sum, value) => sum + value, 0);
+
+  return Math.round(total * 100) / 100;
+}
+
+function formatIsoDate(date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatShortDate(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${mm}/${dd}`;
+}
+
+function getPeriodDates(startDateIso) {
+  const start = new Date(startDateIso + "T00:00:00");
+  const dates = [];
+  for (let i = 0; i < PERIOD_DAYS; i += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    dates.push(formatIsoDate(date));
+  }
+  return dates;
+}
+
+function normalizeEntriesByDate(parsedEntries, startDateIso) {
+  const dates = getPeriodDates(startDateIso);
+  const normalized = Object.fromEntries(dates.map((date) => [date, 0]));
+
+  // Backward compatibility for older array-based saves.
+  if (Array.isArray(parsedEntries)) {
+    for (const item of parsedEntries) {
+      if (item && typeof item.date === "string" && dates.includes(item.date)) {
+        normalized[item.date] = Number(item.amount || 0);
+      }
+    }
+    return normalized;
+  }
+
+  if (parsedEntries && typeof parsedEntries === "object") {
+    for (const date of dates) {
+      normalized[date] = Number(parsedEntries[date] || 0);
+    }
+  }
+
+  return normalized;
+}
+
+function loadData() {
+  const raw = canUseLocalStorage ? localStorage.getItem(STORAGE_KEY) : memoryStore;
+  if (!raw) {
+    return {
+      startDate: todayIso,
+      totalBudget: 0,
+      entriesByDate: normalizeEntriesByDate({}, todayIso),
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const startDate = parsed.startDate || todayIso;
+    return {
+      startDate,
+      totalBudget: Number(parsed.totalBudget || 0),
+      entriesByDate: normalizeEntriesByDate(parsed.entriesByDate ?? parsed.entries, startDate),
+    };
+  } catch {
+    return {
+      startDate: todayIso,
+      totalBudget: 0,
+      entriesByDate: normalizeEntriesByDate({}, todayIso),
+    };
+  }
+}
+
+function saveData(data) {
+  const serialized = JSON.stringify(data);
+  if (canUseLocalStorage) {
+    localStorage.setItem(STORAGE_KEY, serialized);
+    return;
+  }
+  memoryStore = serialized;
+}
+
+function computeSpent(entriesByDate) {
+  return Object.values(entriesByDate).reduce((sum, amount) => sum + Number(amount || 0), 0);
+}
+
+function daysLeft(startDate) {
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(start);
+  end.setDate(end.getDate() + PERIOD_DAYS - 1);
+  const now = new Date();
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffMs = end - nowMidnight;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(0, Math.min(PERIOD_DAYS, diffDays));
+}
+
+function elapsedDays(startDateIso) {
+  const start = new Date(startDateIso + "T00:00:00");
+  const today = new Date(todayIso + "T00:00:00");
+  const diffMs = today - start;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(0, Math.min(PERIOD_DAYS, diffDays));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function trendColor(spent, total, startDateIso) {
+  if (total <= 0) {
+    return "hsl(145, 62%, 36%)";
+  }
+
+  const elapsed = elapsedDays(startDateIso);
+  const expectedSpent = (total / PERIOD_DAYS) * elapsed;
+  const baseline = Math.max(total / PERIOD_DAYS, expectedSpent);
+  const drift = baseline > 0 ? (spent - expectedSpent) / baseline : 0;
+  const normalized = clamp((drift + 0.6) / 1.2, 0, 1);
+  const hue = 120 * (1 - normalized);
+
+  return `hsl(${hue.toFixed(0)}, 70%, 42%)`;
+}
+
+function renderTicks(startDateIso) {
+  meterTicks.innerHTML = "";
+
+  const start = new Date(startDateIso + "T00:00:00");
+  const today = new Date(todayIso + "T00:00:00");
+
+  for (let i = 0; i < PERIOD_DAYS; i += 1) {
+    const tickDate = new Date(start);
+    tickDate.setDate(start.getDate() + i);
+
+    const row = document.createElement("div");
+    row.className = "tick-row";
+
+    const tick = document.createElement("span");
+    tick.className = "tick";
+
+    const label = document.createElement("span");
+    label.className = "tick-label";
+    label.textContent = `Day ${i + 1} - ${formatShortDate(tickDate)}`;
+
+    row.title = `Day ${i + 1}: ${formatIsoDate(tickDate)}`;
+
+    if (tickDate < today) {
+      row.classList.add("past");
+    }
+    if (tickDate.getTime() === today.getTime()) {
+      row.classList.add("today");
+    }
+
+    row.appendChild(tick);
+    row.appendChild(label);
+    meterTicks.appendChild(row);
+  }
+}
+
+function renderEntries(startDateIso, entriesByDate) {
+  entriesBody.innerHTML = "";
+  const dates = getPeriodDates(startDateIso);
+
+  for (let i = 0; i < dates.length; i += 1) {
+    const date = dates[i];
+    const tr = document.createElement("tr");
+
+    const dayCell = document.createElement("td");
+    dayCell.textContent = String(i + 1);
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = date;
+
+    const amountCell = document.createElement("td");
+    amountCell.textContent = currency(Number(entriesByDate[date] || 0));
+
+    tr.appendChild(dayCell);
+    tr.appendChild(dateCell);
+    tr.appendChild(amountCell);
+    entriesBody.appendChild(tr);
+  }
+}
+
+function render() {
+  const data = loadData();
+  const spent = computeSpent(data.entriesByDate);
+  const total = Number(data.totalBudget || 0);
+  const remaining = total - spent;
+  const remainingForMeter = Math.max(0, remaining);
+  const remainingPct = total > 0 ? Math.max(0, Math.min(100, (remainingForMeter / total) * 100)) : 0;
+  const color = trendColor(spent, total, data.startDate || todayIso);
+
+  startDateInput.value = data.startDate || todayIso;
+  totalBudgetInput.value = total > 0 ? total : "";
+
+  statTotal.textContent = currency(total);
+  statSpent.textContent = currency(spent);
+  statRemaining.textContent = currency(remaining);
+  statDaysLeft.textContent = String(daysLeft(data.startDate || todayIso));
+  meterFill.style.height = `${remainingPct}%`;
+  meterFill.style.background = `linear-gradient(0deg, ${color}, ${color})`;
+
+  renderTicks(data.startDate || todayIso);
+  renderEntries(data.startDate || todayIso, data.entriesByDate);
+}
+
+setupForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const previous = loadData();
+  const startDate = startDateInput.value;
+  const data = {
+    startDate,
+    totalBudget: Number(totalBudgetInput.value || 0),
+    entriesByDate: normalizeEntriesByDate(previous.entriesByDate, startDate),
+  };
+  saveData(data);
+  render();
+});
+
+spendForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  let amount;
+  try {
+    amount = parseSpendExpression(spendAmountInput.value);
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (amount < 0) return;
+
+  const data = loadData();
+  const validDates = getPeriodDates(data.startDate || todayIso);
+  if (!validDates.includes(spendDateInput.value)) {
+    alert("Spend date must be within the current 14-day period.");
+    return;
+  }
+
+  data.entriesByDate[spendDateInput.value] = amount;
+  saveData(data);
+
+  spendAmountInput.value = "";
+  render();
+});
+
+resetBtn.addEventListener("click", () => {
+  const confirmReset = window.confirm("Reset current period and clear all entries?");
+  if (!confirmReset) return;
+  if (canUseLocalStorage) {
+    localStorage.removeItem(STORAGE_KEY);
+  } else {
+    memoryStore = null;
+  }
+  render();
+});
+
+if (!canUseLocalStorage) {
+  const note = document.createElement("small");
+  note.textContent = "Local storage is blocked in this browser context. Data resets when this tab closes.";
+  document.querySelector(".status").appendChild(note);
+}
+
+render();
+
+
