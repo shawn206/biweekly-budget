@@ -82,7 +82,6 @@ function normalizeEntriesByDate(parsedEntries, startDateIso) {
   const dates = getPeriodDates(startDateIso);
   const normalized = Object.fromEntries(dates.map((date) => [date, 0]));
 
-  // Backward compatibility for older array-based saves.
   if (Array.isArray(parsedEntries)) {
     for (const item of parsedEntries) {
       if (item && typeof item.date === "string" && dates.includes(item.date)) {
@@ -171,6 +170,16 @@ function trendColor(spent, total, startDateIso) {
 
   const elapsed = elapsedDays(startDateIso);
   const expectedSpent = (total / PERIOD_DAYS) * elapsed;
+
+  if (elapsed === 0) {
+    if (spent <= 0) {
+      return "hsl(120, 70%, 42%)";
+    }
+    const preStartOverspend = clamp(spent / (total / PERIOD_DAYS), 0, 1);
+    const hue = 60 * (1 - preStartOverspend);
+    return `hsl(${hue.toFixed(0)}, 70%, 42%)`;
+  }
+
   const baseline = Math.max(total / PERIOD_DAYS, expectedSpent);
   const drift = baseline > 0 ? (spent - expectedSpent) / baseline : 0;
   const normalized = clamp((drift + 0.6) / 1.2, 0, 1);
@@ -221,6 +230,9 @@ function renderEntries(startDateIso, entriesByDate) {
   for (let i = 0; i < dates.length; i += 1) {
     const date = dates[i];
     const tr = document.createElement("tr");
+    if (date === todayIso) {
+      tr.classList.add("today-row");
+    }
 
     const dayCell = document.createElement("td");
     dayCell.textContent = String(i + 1);
@@ -319,5 +331,3 @@ if (!canUseLocalStorage) {
 }
 
 render();
-
-
