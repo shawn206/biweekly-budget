@@ -14,7 +14,7 @@ A simple browser-based budget app for a 14-day pay period.
 
 ## Run locally
 Open the app directly:
-- `web/index.html`
+- `docs/index.html`
 
 Optional launcher:
 ```powershell
@@ -23,10 +23,8 @@ python run_local.py
 
 ## GitHub Pages deployment
 1. In GitHub repo settings, open **Pages**.
-2. Set source to branch `main` and folder `/ (root)`.
+2. Set source to branch `main` and folder `/docs`.
 3. Save and wait for the site URL.
-
-The root `index.html` redirects to `web/index.html`.
 
 ## Data transfer between devices (no backend)
 Use the app buttons in the Entries pane:
@@ -35,7 +33,6 @@ Use the app buttons in the Entries pane:
 - **Import JSON** on destination device.
 
 ## Project structure
-- `web/` primary source for the app UI.
-- `index.html` root redirect used for GitHub Pages root deployment.
+- `docs/` primary source for the app UI and GitHub Pages deployment.
 - `src/biweekly_budget/` Python domain logic scaffold.
 - `run_local.py` local launcher convenience script.
