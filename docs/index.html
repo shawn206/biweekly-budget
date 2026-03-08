@@ -1,0 +1,88 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biweekly Budget Tracker</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=6" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <h1>Biweekly Budget Tracker</h1>
+    <p class="sub">Set a 14-day budget, log each day, and watch your balance meter.</p>
+
+    <div class="layout">
+      <aside class="left-column">
+        <section class="card status">
+          <h2>Budget-o-meter</h2>
+          <div class="meter-panel">
+            <div class="meter-wrap" aria-label="budget meter">
+              <div id="meter-fill" class="meter-fill"></div>
+            </div>
+            <div id="meter-ticks" class="meter-ticks" aria-label="14 day period ticks"></div>
+          </div>
+          <div class="stats">
+            <p><strong>Total Budget:</strong> <span id="stat-total">$0.00</span></p>
+            <p><strong>Spent:</strong> <span id="stat-spent">$0.00</span></p>
+            <p><strong>Remaining:</strong> <span id="stat-remaining">$0.00</span></p>
+            <p><strong>Days Left:</strong> <span id="stat-days-left">14</span></p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Period Setup</h2>
+          <form id="setup-form" class="grid-form">
+            <label>
+              Period Start Date
+              <input id="start-date" type="date" required />
+            </label>
+            <label>
+              Total 14-Day Budget ($)
+              <input id="total-budget" type="number" min="0" step="0.01" placeholder="800.00" required />
+            </label>
+            <button type="submit">Save Budget</button>
+          </form>
+        </section>
+      </aside>
+
+      <section class="right-column">
+        <section class="card">
+          <h2>Today's Spend</h2>
+          <form id="spend-form" class="inline-form">
+            <input id="spend-date" type="date" required />
+            <input id="spend-amount" type="text" inputmode="decimal" placeholder="e.g. 8.50+7.20" required />
+            <button type="submit">Add Spend</button>
+            <button id="reset-day-btn" class="secondary" type="button">Reset Day</button>
+          </form>
+          <small>Entries are stored only in your browser on this computer.</small>
+        </section>
+
+        <section class="card entries-card">
+          <h2>Entries</h2>
+          <div class="entries-table-wrap">
+            <table class="entries-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Date</th>
+                  <th>Spend</th>
+                </tr>
+              </thead>
+              <tbody id="entries-body"></tbody>
+            </table>
+          </div>
+          <div class="entries-actions">
+            <button id="export-btn" class="secondary" type="button">Export JSON</button>
+            <button id="import-btn" class="secondary" type="button">Import JSON</button>
+            <input id="import-file" type="file" accept="application/json,.json" hidden />
+          </div>
+          <button id="reset-btn" class="danger" type="button">Reset Period</button>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
