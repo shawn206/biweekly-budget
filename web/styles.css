@@ -110,6 +110,18 @@ button.secondary {
   font-size: 0.8rem;
 }
 
+.entries-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+#export-btn,
+#import-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
 #reset-btn {
   margin-top: auto;
   align-self: flex-end;
@@ -272,4 +284,5 @@ button.secondary {
 .entries-table tbody tr.today-row td {
   font-weight: 700;
 }
+
 

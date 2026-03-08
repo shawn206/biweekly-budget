@@ -10,6 +10,9 @@ const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
 const resetBtn = document.getElementById("reset-btn");
 const resetDayBtn = document.getElementById("reset-day-btn");
+const exportBtn = document.getElementById("export-btn");
+const importBtn = document.getElementById("import-btn");
+const importFileInput = document.getElementById("import-file");
 const entriesBody = document.getElementById("entries-body");
 const meterTicks = document.getElementById("meter-ticks");
 
@@ -101,30 +104,26 @@ function normalizeEntriesByDate(parsedEntries, startDateIso) {
   return normalized;
 }
 
+function coerceDataForSave(rawData) {
+  const startDate = typeof rawData?.startDate === "string" && rawData.startDate ? rawData.startDate : todayIso;
+  const totalBudget = Number(rawData?.totalBudget || 0);
+  return {
+    startDate,
+    totalBudget: Number.isFinite(totalBudget) ? totalBudget : 0,
+    entriesByDate: normalizeEntriesByDate(rawData?.entriesByDate ?? rawData?.entries, startDate),
+  };
+}
+
 function loadData() {
   const raw = canUseLocalStorage ? localStorage.getItem(STORAGE_KEY) : memoryStore;
   if (!raw) {
-    return {
-      startDate: todayIso,
-      totalBudget: 0,
-      entriesByDate: normalizeEntriesByDate({}, todayIso),
-    };
+    return coerceDataForSave({});
   }
 
   try {
-    const parsed = JSON.parse(raw);
-    const startDate = parsed.startDate || todayIso;
-    return {
-      startDate,
-      totalBudget: Number(parsed.totalBudget || 0),
-      entriesByDate: normalizeEntriesByDate(parsed.entriesByDate ?? parsed.entries, startDate),
-    };
+    return coerceDataForSave(JSON.parse(raw));
   } catch {
-    return {
-      startDate: todayIso,
-      totalBudget: 0,
-      entriesByDate: normalizeEntriesByDate({}, todayIso),
-    };
+    return coerceDataForSave({});
   }
 }
 
@@ -255,6 +254,33 @@ function renderEntries(startDateIso, entriesByDate) {
   }
 }
 
+function exportData() {
+  const data = loadData();
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data,
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `biweekly-budget-${todayIso}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importDataFromText(text) {
+  const parsed = JSON.parse(text);
+  const source = parsed && typeof parsed === "object" && parsed.data ? parsed.data : parsed;
+  const data = coerceDataForSave(source);
+  saveData(data);
+  render();
+}
+
 function render() {
   const data = loadData();
   const spent = computeSpent(data.entriesByDate);
@@ -331,6 +357,30 @@ resetDayBtn.addEventListener("click", () => {
   saveData(data);
   render();
 });
+
+exportBtn.addEventListener("click", () => {
+  exportData();
+});
+
+importBtn.addEventListener("click", () => {
+  importFileInput.click();
+});
+
+importFileInput.addEventListener("change", async (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    importDataFromText(text);
+    alert("Budget data imported successfully.");
+  } catch {
+    alert("Import failed. Please select a valid budget JSON export file.");
+  } finally {
+    importFileInput.value = "";
+  }
+});
+
 resetBtn.addEventListener("click", () => {
   const confirmReset = window.confirm("Reset current period and clear all entries?");
   if (!confirmReset) return;
@@ -349,4 +399,3 @@ if (!canUseLocalStorage) {
 }
 
 render();
-
