@@ -9,6 +9,7 @@ const totalBudgetInput = document.getElementById("total-budget");
 const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
 const resetBtn = document.getElementById("reset-btn");
+const resetDayBtn = document.getElementById("reset-day-btn");
 const entriesBody = document.getElementById("entries-body");
 const meterTicks = document.getElementById("meter-ticks");
 
@@ -134,6 +135,10 @@ function saveData(data) {
     return;
   }
   memoryStore = serialized;
+}
+
+function roundMoney(value) {
+  return Math.round(value * 100) / 100;
 }
 
 function computeSpent(entriesByDate) {
@@ -306,13 +311,26 @@ spendForm.addEventListener("submit", (event) => {
     return;
   }
 
-  data.entriesByDate[spendDateInput.value] = amount;
+  const existing = Number(data.entriesByDate[spendDateInput.value] || 0);
+  data.entriesByDate[spendDateInput.value] = roundMoney(existing + amount);
   saveData(data);
 
   spendAmountInput.value = "";
   render();
 });
 
+resetDayBtn.addEventListener("click", () => {
+  const data = loadData();
+  const validDates = getPeriodDates(data.startDate || todayIso);
+  if (!validDates.includes(spendDateInput.value)) {
+    alert("Selected date must be within the current 14-day period.");
+    return;
+  }
+
+  data.entriesByDate[spendDateInput.value] = 0;
+  saveData(data);
+  render();
+});
 resetBtn.addEventListener("click", () => {
   const confirmReset = window.confirm("Reset current period and clear all entries?");
   if (!confirmReset) return;
@@ -331,3 +349,4 @@ if (!canUseLocalStorage) {
 }
 
 render();
+

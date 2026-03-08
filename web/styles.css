@@ -99,6 +99,17 @@ button.danger {
   background: var(--warn);
 }
 
+button.secondary {
+  background: #e4ebe7;
+  color: #1b2b24;
+  border: 1px solid var(--border);
+}
+
+#reset-day-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 #reset-btn {
   margin-top: auto;
   align-self: flex-end;
