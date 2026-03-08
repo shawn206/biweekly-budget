@@ -13,10 +13,16 @@ A simple browser-based budget app for a 14-day pay period.
 - Data is stored locally in browser storage.
 
 ## Run locally
-Open the app directly:
-- `docs/index.html`
+From the repository root directory:
 
-Optional launcher:
+```powershell
+start .\docs\index.html
+```
+
+You can also open `docs/index.html` directly in your browser.
+
+Optional Python launcher:
+
 ```powershell
 python run_local.py
 ```
