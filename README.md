@@ -1,28 +1,41 @@
 ﻿# Biweekly Budget Tracker
 
-Simple local-first browser app to track spending across a 14-day pay period.
+A simple browser-based budget app for a 14-day pay period.
 
-## What it does
-- Set one budget amount for a 14-day period.
-- Add daily spend entries.
-- See a visual budget meter deplete as you spend.
-- View total spent, remaining amount, and days left in the period.
-- Store data in your browser local storage (no backend yet).
+## Features
+- Set one total budget per 14-day period.
+- Log spend by date (supports calculator input like `8.50+7.20`).
+- Spend logging is additive for the selected date.
+- Reset an individual day with **Reset Day**.
+- See a vertical budget meter with day ticks and trend-based color.
+- View all 14 days in an entries table.
+- Export/import your data as JSON to move between devices.
+- Data is stored locally in browser storage.
 
-## Run locally (no server)
-1. Use Python 3.12+.
-2. From this repo:
-   ```powershell
-   python run_local.py
-   ```
-3. Your default browser opens `web/index.html` directly.
+## Run locally
+Open the app directly:
+- `web/index.html`
 
-You can also open `web/index.html` manually in your browser.
+Optional launcher:
+```powershell
+python run_local.py
+```
+
+## GitHub Pages deployment
+1. In GitHub repo settings, open **Pages**.
+2. Set source to branch `main` and folder `/ (root)`.
+3. Save and wait for the site URL.
+
+The root `index.html` redirects to `web/index.html`.
+
+## Data transfer between devices (no backend)
+Use the app buttons in the Entries pane:
+- **Export JSON** on source device.
+- Move file (email/cloud/etc.).
+- **Import JSON** on destination device.
 
 ## Project structure
-- `web/` contains the local browser app (`index.html`, `styles.css`, `app.js`).
-- `src/biweekly_budget/` contains Python domain logic for future backend/API reuse.
-- `run_local.py` is a convenience launcher.
-
-## Future backend path
-When you are ready, this structure can evolve to a Python API app (Flask/FastAPI) that reuses the logic in `src/biweekly_budget/` and persists data in SQLite.
+- `web/` primary source for the app UI.
+- `index.html` root redirect used for GitHub Pages root deployment.
+- `src/biweekly_budget/` Python domain logic scaffold.
+- `run_local.py` local launcher convenience script.
