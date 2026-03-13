@@ -130,15 +130,18 @@ button.secondary {
 }
 
 .meter-panel {
-  display: flex;
-  gap: 1rem;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 1rem;
+  row-gap: 0.45rem;
   height: 280px;
+  margin-top: 0.5rem;
 }
 
 .meter-wrap {
-  width: 66px;
-  min-width: 66px;
+  width: 94px;
+  min-width: 94px;
   height: 100%;
   background: #ebf0ec;
   border-radius: 14px;
@@ -149,6 +152,47 @@ button.secondary {
   align-items: flex-end;
 }
 
+.meter-trend {
+  grid-column: 1;
+  grid-row: 1;
+  width: 94px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1ch auto 1ch;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-wrap {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.meter-trend .trend-sign {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font: inherit;
+}
+
+.meter-trend .trend-sign-empty {
+  width: 0;
+}
+
+.meter-trend .trend-value {
+  display: inline-block;
+  text-align: center;
+}
+
+.meter-trend .trend-sign[aria-hidden="true"] {
+  visibility: hidden;
+}
+
 .meter-fill {
   width: 100%;
   height: 0%;
@@ -157,12 +201,13 @@ button.secondary {
 }
 
 .meter-ticks {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 2;
   height: 100%;
   overflow: hidden;
   display: grid;
   grid-template-rows: repeat(14, minmax(0, 1fr));
-  gap: 0.2rem;
+  gap: 0;
 }
 
 .tick-row {
@@ -170,6 +215,7 @@ button.secondary {
   align-items: center;
   gap: 0.45rem;
   min-height: 0;
+  padding: 0.1rem 0;
 }
 
 .tick {
@@ -213,6 +259,18 @@ button.secondary {
 
 .stats p {
   margin: 0;
+}
+
+.meter-trend.trend-positive {
+  color: #1c6f52;
+}
+
+.meter-trend.trend-negative {
+  color: #c24b3d;
+}
+
+.meter-trend.trend-neutral {
+  color: #1b2b24;
 }
 
 .entries-table-wrap {
@@ -300,9 +358,17 @@ button.secondary {
     height: 250px;
   }
 
+  .meter-panel {
+    grid-template-columns: 76px 1fr;
+  }
+
   .meter-wrap {
-    width: 54px;
-    min-width: 54px;
+    width: 76px;
+    min-width: 76px;
+  }
+
+  .meter-trend {
+    width: 76px;
   }
 
   .tick-label {

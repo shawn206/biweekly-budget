@@ -18,6 +18,7 @@ const meterTicks = document.getElementById("meter-ticks");
 
 const statTotal = document.getElementById("stat-total");
 const statDailyBudget = document.getElementById("stat-daily-budget");
+const statTrend = document.getElementById("stat-trend");
 const statSpent = document.getElementById("stat-spent");
 const statRemaining = document.getElementById("stat-remaining");
 const statDaysLeft = document.getElementById("stat-days-left");
@@ -59,6 +60,14 @@ function signedCurrency(value) {
     return `-${currency(Math.abs(rounded))}`;
   }
   return currency(0);
+}
+
+function setTrendDisplay(value) {
+  const rounded = roundMoney(value);
+  const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
+  const amount = currency(Math.abs(rounded));
+  const signClass = sign ? "trend-sign" : "trend-sign trend-sign-empty";
+  statTrend.innerHTML = `<span class="${signClass}">${sign}</span><span class="trend-value">${amount}</span><span class="${signClass}" aria-hidden="true">${sign}</span>`;
 }
 
 function parseSpendExpression(rawInput) {
@@ -168,6 +177,27 @@ function dailyBudget(totalBudget) {
   return roundMoney(Number(totalBudget || 0) / PERIOD_DAYS);
 }
 
+function currentTrendAmount(startDateIso, entriesByDate, targetDailyBudget) {
+  const dates = getPeriodDates(startDateIso);
+  let cumulativeSpend = 0;
+
+  for (let i = 0; i < dates.length; i += 1) {
+    const date = dates[i];
+    if (date > todayIso) {
+      break;
+    }
+
+    cumulativeSpend = roundMoney(cumulativeSpend + Number(entriesByDate[date] || 0));
+
+    if (date === todayIso) {
+      const expectedSpendToDate = roundMoney(targetDailyBudget * (i + 1));
+      return roundMoney(expectedSpendToDate - cumulativeSpend);
+    }
+  }
+
+  return 0;
+}
+
 function daysLeft(startDate) {
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(start);
@@ -187,32 +217,35 @@ function elapsedDays(startDateIso) {
   return Math.max(0, Math.min(PERIOD_DAYS, diffDays));
 }
 
+function meterRemainingAmount(remaining, targetDailyBudget, elapsed) {
+  if (targetDailyBudget <= 0) {
+    return Math.max(0, remaining);
+  }
+
+  if (elapsed >= 1 && elapsed <= PERIOD_DAYS) {
+    return roundMoney(Math.max(0, remaining) + targetDailyBudget / 2);
+  }
+
+  return Math.max(0, remaining);
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function trendColor(spent, total, startDateIso) {
-  if (total <= 0) {
+function trendColor(trendAmount, targetDailyBudget) {
+  if (targetDailyBudget <= 0) {
     return "hsl(145, 62%, 36%)";
   }
 
-  const elapsed = elapsedDays(startDateIso);
-  const expectedSpent = (total / PERIOD_DAYS) * elapsed;
-
-  if (elapsed === 0) {
-    if (spent <= 0) {
-      return "hsl(120, 70%, 42%)";
-    }
-    const preStartOverspend = clamp(spent / (total / PERIOD_DAYS), 0, 1);
-    const hue = 60 * (1 - preStartOverspend);
-    return `hsl(${hue.toFixed(0)}, 70%, 42%)`;
+  // On or ahead of budget pace should read as healthy green.
+  if (trendAmount >= 0) {
+    return "hsl(120, 70%, 42%)";
   }
 
-  const baseline = Math.max(total / PERIOD_DAYS, expectedSpent);
-  const drift = baseline > 0 ? (spent - expectedSpent) / baseline : 0;
-  const normalized = clamp((drift + 0.6) / 1.2, 0, 1);
-  const hue = 120 * (1 - normalized);
-
+  // One full day behind (or worse) trends to red, with yellow/orange in between.
+  const deficitRatio = clamp(Math.abs(trendAmount) / targetDailyBudget, 0, 1);
+  const hue = 120 * (1 - deficitRatio);
   return `hsl(${hue.toFixed(0)}, 70%, 42%)`;
 }
 
@@ -342,16 +375,20 @@ function render() {
   const spent = computeSpent(data.entriesByDate);
   const total = Number(data.totalBudget || 0);
   const perDayBudget = dailyBudget(total);
+  const trendAmount = currentTrendAmount(data.startDate || todayIso, data.entriesByDate, perDayBudget);
+  const elapsed = elapsedDays(data.startDate || todayIso);
   const remaining = total - spent;
-  const remainingForMeter = Math.max(0, remaining);
+  const remainingForMeter = meterRemainingAmount(remaining, perDayBudget, elapsed);
   const remainingPct = total > 0 ? Math.max(0, Math.min(100, (remainingForMeter / total) * 100)) : 0;
-  const color = trendColor(spent, total, data.startDate || todayIso);
+  const color = trendColor(trendAmount, perDayBudget);
 
   startDateInput.value = data.startDate || todayIso;
   totalBudgetInput.value = total > 0 ? total : "";
 
   statTotal.textContent = currency(total);
   statDailyBudget.textContent = currency(perDayBudget);
+  setTrendDisplay(trendAmount);
+  statTrend.className = `meter-trend ${trendAmount > 0 ? "trend-positive" : trendAmount < 0 ? "trend-negative" : "trend-neutral"}`;
   statSpent.textContent = currency(spent);
   statRemaining.textContent = currency(remaining);
   statDaysLeft.textContent = String(daysLeft(data.startDate || todayIso));
