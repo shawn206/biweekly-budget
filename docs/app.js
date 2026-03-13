@@ -17,6 +17,7 @@ const entriesBody = document.getElementById("entries-body");
 const meterTicks = document.getElementById("meter-ticks");
 
 const statTotal = document.getElementById("stat-total");
+const statDailyBudget = document.getElementById("stat-daily-budget");
 const statSpent = document.getElementById("stat-spent");
 const statRemaining = document.getElementById("stat-remaining");
 const statDaysLeft = document.getElementById("stat-days-left");
@@ -47,6 +48,17 @@ const canUseLocalStorage = storageAvailable();
 
 function currency(value) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function signedCurrency(value) {
+  const rounded = roundMoney(value);
+  if (rounded > 0) {
+    return `+${currency(rounded)}`;
+  }
+  if (rounded < 0) {
+    return `-${currency(Math.abs(rounded))}`;
+  }
+  return currency(0);
 }
 
 function parseSpendExpression(rawInput) {
@@ -152,6 +164,10 @@ function computeSpent(entriesByDate) {
   return Object.values(entriesByDate).reduce((sum, amount) => sum + Number(amount || 0), 0);
 }
 
+function dailyBudget(totalBudget) {
+  return roundMoney(Number(totalBudget || 0) / PERIOD_DAYS);
+}
+
 function daysLeft(startDate) {
   const start = new Date(startDate + "T00:00:00");
   const end = new Date(start);
@@ -235,9 +251,10 @@ function renderTicks(startDateIso) {
   }
 }
 
-function renderEntries(startDateIso, entriesByDate) {
+function renderEntries(startDateIso, entriesByDate, targetDailyBudget) {
   entriesBody.innerHTML = "";
   const dates = getPeriodDates(startDateIso);
+  let cumulativeSpend = 0;
 
   for (let i = 0; i < dates.length; i += 1) {
     const date = dates[i];
@@ -253,11 +270,42 @@ function renderEntries(startDateIso, entriesByDate) {
     dateCell.textContent = date;
 
     const amountCell = document.createElement("td");
-    amountCell.textContent = currency(Number(entriesByDate[date] || 0));
+    const spendAmount = roundMoney(Number(entriesByDate[date] || 0));
+    cumulativeSpend = roundMoney(cumulativeSpend + spendAmount);
+    amountCell.textContent = currency(spendAmount);
+
+    if (date > todayIso) {
+      amountCell.classList.add("spend-on");
+    } else if (spendAmount > targetDailyBudget) {
+      amountCell.classList.add("spend-over");
+    } else if (spendAmount < targetDailyBudget) {
+      amountCell.classList.add("spend-under");
+    } else {
+      amountCell.classList.add("spend-on");
+    }
+
+    const deltaCell = document.createElement("td");
+    if (date > todayIso) {
+      deltaCell.textContent = "";
+      deltaCell.classList.add("delta-neutral");
+    } else {
+      const expectedSpendToDate = roundMoney(targetDailyBudget * (i + 1));
+      const cumulativeDelta = roundMoney(expectedSpendToDate - cumulativeSpend);
+      deltaCell.textContent = signedCurrency(cumulativeDelta);
+
+      if (cumulativeDelta === 0) {
+        deltaCell.classList.add("delta-neutral");
+      } else if (cumulativeDelta > 0) {
+        deltaCell.classList.add("delta-positive");
+      } else {
+        deltaCell.classList.add("delta-negative");
+      }
+    }
 
     tr.appendChild(dayCell);
     tr.appendChild(dateCell);
     tr.appendChild(amountCell);
+    tr.appendChild(deltaCell);
     entriesBody.appendChild(tr);
   }
 }
@@ -293,6 +341,7 @@ function render() {
   const data = loadData();
   const spent = computeSpent(data.entriesByDate);
   const total = Number(data.totalBudget || 0);
+  const perDayBudget = dailyBudget(total);
   const remaining = total - spent;
   const remainingForMeter = Math.max(0, remaining);
   const remainingPct = total > 0 ? Math.max(0, Math.min(100, (remainingForMeter / total) * 100)) : 0;
@@ -302,6 +351,7 @@ function render() {
   totalBudgetInput.value = total > 0 ? total : "";
 
   statTotal.textContent = currency(total);
+  statDailyBudget.textContent = currency(perDayBudget);
   statSpent.textContent = currency(spent);
   statRemaining.textContent = currency(remaining);
   statDaysLeft.textContent = String(daysLeft(data.startDate || todayIso));
@@ -309,7 +359,7 @@ function render() {
   meterFill.style.background = `linear-gradient(0deg, ${color}, ${color})`;
 
   renderTicks(data.startDate || todayIso);
-  renderEntries(data.startDate || todayIso, data.entriesByDate);
+  renderEntries(data.startDate || todayIso, data.entriesByDate, perDayBudget);
 }
 
 setupForm.addEventListener("submit", (event) => {
