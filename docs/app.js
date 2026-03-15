@@ -10,6 +10,7 @@ const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
 const resetBtn = document.getElementById("reset-btn");
 const resetDayBtn = document.getElementById("reset-day-btn");
+const nextPeriodBtn = document.getElementById("next-period-btn");
 const exportBtn = document.getElementById("export-btn");
 const importBtn = document.getElementById("import-btn");
 const importFileInput = document.getElementById("import-file");
@@ -112,6 +113,11 @@ function formatShortDate(date) {
   return `${mm}/${dd}`;
 }
 
+function formatDisplayDate(isoDate) {
+  const [yyyy, mm, dd] = isoDate.split("-");
+  return `${mm}/${dd}/${yyyy}`;
+}
+
 function getPeriodDates(startDateIso) {
   const start = new Date(startDateIso + "T00:00:00");
   const dates = [];
@@ -121,6 +127,12 @@ function getPeriodDates(startDateIso) {
     dates.push(formatIsoDate(date));
   }
   return dates;
+}
+
+function shiftIsoDate(isoDate, days) {
+  const date = new Date(isoDate + "T00:00:00");
+  date.setDate(date.getDate() + days);
+  return formatIsoDate(date);
 }
 
 function normalizeEntriesByDate(parsedEntries, startDateIso) {
@@ -436,14 +448,14 @@ function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDa
         data-action="toggle-day"
         data-date="${date}"
         aria-expanded="${expandedDates.has(date) ? "true" : "false"}"
+        aria-label="${expandedDates.has(date) ? "Collapse" : "Expand"} ${formatDisplayDate(date)} transactions"
       >
         <span class="day-toggle-marker">${expandedDates.has(date) ? "-" : "+"}</span>
-        <span>Day ${i + 1}</span>
       </button>
     `;
 
     const dateCell = document.createElement("td");
-    dateCell.textContent = date;
+    dateCell.textContent = formatDisplayDate(date);
 
     const amountCell = document.createElement("td");
     const spendAmount = roundMoney(Number(entriesByDate[date] || 0));
@@ -573,6 +585,22 @@ setupForm.addEventListener("submit", (event) => {
       dayTotalsFromTransactions(previous.transactionsByDate, previous.startDate || todayIso)
     ),
   };
+  saveData(data);
+  render();
+});
+
+nextPeriodBtn.addEventListener("click", () => {
+  const current = loadData();
+  const startDate = startDateInput.value || current.startDate || todayIso;
+  const nextStartDate = shiftIsoDate(startDate, PERIOD_DAYS);
+  const totalBudget = Number(totalBudgetInput.value || current.totalBudget || 0);
+  const data = {
+    startDate: nextStartDate,
+    totalBudget,
+    transactionsByDate: normalizeTransactionsByDate(null, nextStartDate, null),
+  };
+
+  focusExpandedDate("");
   saveData(data);
   render();
 });

@@ -43,7 +43,10 @@
               Total 14-Day Budget ($)
               <input id="total-budget" type="number" min="0" step="0.01" placeholder="800.00" required />
             </label>
-            <button type="submit">Save Budget</button>
+            <div class="setup-actions">
+              <button type="submit">Save Budget</button>
+              <button id="next-period-btn" class="secondary" type="button">Next Period</button>
+            </div>
           </form>
         </section>
       </aside>
@@ -67,7 +70,7 @@
             <table class="entries-table">
               <thead>
                 <tr>
-                  <th>Day</th>
+                  <th></th>
                   <th>Date</th>
                   <th>Spend</th>
                   <th>Trend</th>
