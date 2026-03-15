@@ -23,6 +23,7 @@ const statSpent = document.getElementById("stat-spent");
 const statRemaining = document.getElementById("stat-remaining");
 const statDaysLeft = document.getElementById("stat-days-left");
 const meterFill = document.getElementById("meter-fill");
+const expandedDates = new Set();
 
 function localIsoDate() {
   const now = new Date();
@@ -70,6 +71,10 @@ function setTrendDisplay(value) {
   statTrend.innerHTML = `<span class="${signClass}">${sign}</span><span class="trend-value">${amount}</span><span class="${signClass}" aria-hidden="true">${sign}</span>`;
 }
 
+function createTransactionId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
 function parseSpendExpression(rawInput) {
   const cleaned = String(rawInput || "").replace(/\s+/g, "");
   if (!cleaned) {
@@ -79,12 +84,11 @@ function parseSpendExpression(rawInput) {
     throw new Error("Use amounts like 12.50 or sums like 8.50+7.20.");
   }
 
-  const total = cleaned
+  return cleaned
     .split("+")
     .map((part) => Number(part))
-    .reduce((sum, value) => sum + value, 0);
-
-  return Math.round(total * 100) / 100;
+    .map((value) => roundMoney(value))
+    .filter((value) => value > 0);
 }
 
 function formatIsoDate(date) {
@@ -133,13 +137,83 @@ function normalizeEntriesByDate(parsedEntries, startDateIso) {
   return normalized;
 }
 
+function normalizeTransaction(rawTransaction) {
+  if (typeof rawTransaction === "number") {
+    return rawTransaction > 0
+      ? { id: createTransactionId(), amount: roundMoney(rawTransaction) }
+      : null;
+  }
+
+  if (!rawTransaction || typeof rawTransaction !== "object") {
+    return null;
+  }
+
+  const amount = roundMoney(Number(rawTransaction.amount || 0));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return {
+    id: typeof rawTransaction.id === "string" && rawTransaction.id ? rawTransaction.id : createTransactionId(),
+    amount,
+  };
+}
+
+function transactionsFromAmount(amount) {
+  const rounded = roundMoney(Number(amount || 0));
+  return rounded > 0 ? [{ id: createTransactionId(), amount: rounded }] : [];
+}
+
+function normalizeTransactionsByDate(parsedTransactions, startDateIso, fallbackEntries) {
+  const dates = getPeriodDates(startDateIso);
+  const normalized = Object.fromEntries(dates.map((date) => [date, []]));
+
+  if (parsedTransactions && typeof parsedTransactions === "object" && !Array.isArray(parsedTransactions)) {
+    for (const date of dates) {
+      const rawList = parsedTransactions[date];
+      if (!Array.isArray(rawList)) {
+        continue;
+      }
+
+      normalized[date] = rawList
+        .map((transaction) => normalizeTransaction(transaction))
+        .filter(Boolean);
+    }
+    return normalized;
+  }
+
+  const fallbackByDate = normalizeEntriesByDate(fallbackEntries, startDateIso);
+  for (const date of dates) {
+    normalized[date] = transactionsFromAmount(fallbackByDate[date]);
+  }
+  return normalized;
+}
+
+function dayTotalsFromTransactions(transactionsByDate, startDateIso) {
+  const dates = getPeriodDates(startDateIso);
+  const totals = Object.fromEntries(dates.map((date) => [date, 0]));
+
+  for (const date of dates) {
+    const total = (transactionsByDate[date] || []).reduce((sum, transaction) => {
+      return sum + Number(transaction.amount || 0);
+    }, 0);
+    totals[date] = roundMoney(total);
+  }
+
+  return totals;
+}
+
 function coerceDataForSave(rawData) {
   const startDate = typeof rawData?.startDate === "string" && rawData.startDate ? rawData.startDate : todayIso;
   const totalBudget = Number(rawData?.totalBudget || 0);
   return {
     startDate,
     totalBudget: Number.isFinite(totalBudget) ? totalBudget : 0,
-    entriesByDate: normalizeEntriesByDate(rawData?.entriesByDate ?? rawData?.entries, startDate),
+    transactionsByDate: normalizeTransactionsByDate(
+      rawData?.transactionsByDate,
+      startDate,
+      rawData?.entriesByDate ?? rawData?.entries
+    ),
   };
 }
 
@@ -150,7 +224,18 @@ function loadData() {
   }
 
   try {
-    return coerceDataForSave(JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    const normalized = coerceDataForSave(parsed);
+    const shouldPersistNormalized =
+      !parsed ||
+      typeof parsed !== "object" ||
+      !parsed.transactionsByDate;
+
+    if (shouldPersistNormalized) {
+      saveData(normalized);
+    }
+
+    return normalized;
   } catch {
     return coerceDataForSave({});
   }
@@ -169,8 +254,13 @@ function roundMoney(value) {
   return Math.round(value * 100) / 100;
 }
 
-function computeSpent(entriesByDate) {
-  return Object.values(entriesByDate).reduce((sum, amount) => sum + Number(amount || 0), 0);
+function computeSpent(transactionsByDate) {
+  return Object.values(transactionsByDate).reduce((sum, transactions) => {
+    const dayTotal = (transactions || []).reduce((daySum, transaction) => {
+      return daySum + Number(transaction.amount || 0);
+    }, 0);
+    return sum + dayTotal;
+  }, 0);
 }
 
 function dailyBudget(totalBudget) {
@@ -284,7 +374,41 @@ function renderTicks(startDateIso) {
   }
 }
 
-function renderEntries(startDateIso, entriesByDate, targetDailyBudget) {
+function renderTransactions(date, transactions) {
+  if (!transactions.length) {
+    return '<div class="transactions-empty">No transactions logged.</div>';
+  }
+
+  return `
+    <table class="transactions-table">
+      <thead>
+        <tr>
+          <th>Transaction</th>
+          <th>Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${transactions
+          .map((transaction, index) => {
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${currency(transaction.amount)}</td>
+                <td class="transaction-actions">
+                  <button type="button" class="secondary transaction-btn" data-action="edit-transaction" data-date="${date}" data-id="${transaction.id}">Edit</button>
+                  <button type="button" class="secondary transaction-btn" data-action="delete-transaction" data-date="${date}" data-id="${transaction.id}">Delete</button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDailyBudget) {
   entriesBody.innerHTML = "";
   const dates = getPeriodDates(startDateIso);
   let cumulativeSpend = 0;
@@ -297,7 +421,18 @@ function renderEntries(startDateIso, entriesByDate, targetDailyBudget) {
     }
 
     const dayCell = document.createElement("td");
-    dayCell.textContent = String(i + 1);
+    dayCell.innerHTML = `
+      <button
+        type="button"
+        class="day-toggle"
+        data-action="toggle-day"
+        data-date="${date}"
+        aria-expanded="${expandedDates.has(date) ? "true" : "false"}"
+      >
+        <span class="day-toggle-marker">${expandedDates.has(date) ? "-" : "+"}</span>
+        <span>Day ${i + 1}</span>
+      </button>
+    `;
 
     const dateCell = document.createElement("td");
     dateCell.textContent = date;
@@ -340,6 +475,23 @@ function renderEntries(startDateIso, entriesByDate, targetDailyBudget) {
     tr.appendChild(amountCell);
     tr.appendChild(deltaCell);
     entriesBody.appendChild(tr);
+
+    const detailRow = document.createElement("tr");
+    detailRow.className = "entry-detail-row";
+    if (!expandedDates.has(date)) {
+      detailRow.hidden = true;
+    }
+
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 4;
+    detailCell.innerHTML = `
+      <div class="transactions-panel">
+        ${renderTransactions(date, transactionsByDate[date] || [])}
+      </div>
+    `;
+
+    detailRow.appendChild(detailCell);
+    entriesBody.appendChild(detailRow);
   }
 }
 
@@ -372,10 +524,11 @@ function importDataFromText(text) {
 
 function render() {
   const data = loadData();
-  const spent = computeSpent(data.entriesByDate);
+  const entriesByDate = dayTotalsFromTransactions(data.transactionsByDate, data.startDate || todayIso);
+  const spent = computeSpent(data.transactionsByDate);
   const total = Number(data.totalBudget || 0);
   const perDayBudget = dailyBudget(total);
-  const trendAmount = currentTrendAmount(data.startDate || todayIso, data.entriesByDate, perDayBudget);
+  const trendAmount = currentTrendAmount(data.startDate || todayIso, entriesByDate, perDayBudget);
   const elapsed = elapsedDays(data.startDate || todayIso);
   const remaining = total - spent;
   const remainingForMeter = meterRemainingAmount(remaining, perDayBudget, elapsed);
@@ -396,7 +549,7 @@ function render() {
   meterFill.style.background = `linear-gradient(0deg, ${color}, ${color})`;
 
   renderTicks(data.startDate || todayIso);
-  renderEntries(data.startDate || todayIso, data.entriesByDate, perDayBudget);
+  renderEntries(data.startDate || todayIso, entriesByDate, data.transactionsByDate, perDayBudget);
 }
 
 setupForm.addEventListener("submit", (event) => {
@@ -406,7 +559,11 @@ setupForm.addEventListener("submit", (event) => {
   const data = {
     startDate,
     totalBudget: Number(totalBudgetInput.value || 0),
-    entriesByDate: normalizeEntriesByDate(previous.entriesByDate, startDate),
+    transactionsByDate: normalizeTransactionsByDate(
+      previous.transactionsByDate,
+      startDate,
+      dayTotalsFromTransactions(previous.transactionsByDate, previous.startDate || todayIso)
+    ),
   };
   saveData(data);
   render();
@@ -415,15 +572,15 @@ setupForm.addEventListener("submit", (event) => {
 spendForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  let amount;
+  let amounts;
   try {
-    amount = parseSpendExpression(spendAmountInput.value);
+    amounts = parseSpendExpression(spendAmountInput.value);
   } catch (error) {
     alert(error.message);
     return;
   }
 
-  if (amount < 0) return;
+  if (!amounts.length) return;
 
   const data = loadData();
   const validDates = getPeriodDates(data.startDate || todayIso);
@@ -432,8 +589,11 @@ spendForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const existing = Number(data.entriesByDate[spendDateInput.value] || 0);
-  data.entriesByDate[spendDateInput.value] = roundMoney(existing + amount);
+  const transactions = data.transactionsByDate[spendDateInput.value] || [];
+  data.transactionsByDate[spendDateInput.value] = transactions.concat(
+    amounts.map((amount) => ({ id: createTransactionId(), amount }))
+  );
+  expandedDates.add(spendDateInput.value);
   saveData(data);
 
   spendAmountInput.value = "";
@@ -448,7 +608,8 @@ resetDayBtn.addEventListener("click", () => {
     return;
   }
 
-  data.entriesByDate[spendDateInput.value] = 0;
+  data.transactionsByDate[spendDateInput.value] = [];
+  expandedDates.add(spendDateInput.value);
   saveData(data);
   render();
 });
@@ -485,6 +646,71 @@ resetBtn.addEventListener("click", () => {
     memoryStore = null;
   }
   render();
+});
+
+entriesBody.addEventListener("click", (event) => {
+  const actionTarget = event.target.closest("[data-action]");
+  if (!actionTarget) {
+    return;
+  }
+
+  const { action, date, id } = actionTarget.dataset;
+
+  if (action === "toggle-day") {
+    if (expandedDates.has(date)) {
+      expandedDates.delete(date);
+    } else {
+      expandedDates.add(date);
+    }
+    render();
+    return;
+  }
+
+  const data = loadData();
+  const transactions = [...(data.transactionsByDate[date] || [])];
+  const index = transactions.findIndex((transaction) => transaction.id === id);
+  if (index === -1) {
+    return;
+  }
+
+  if (action === "delete-transaction") {
+    transactions.splice(index, 1);
+    data.transactionsByDate[date] = transactions;
+    expandedDates.add(date);
+    saveData(data);
+    render();
+    return;
+  }
+
+  if (action === "edit-transaction") {
+    const existingAmount = transactions[index].amount;
+    const nextValue = window.prompt(
+      "Update this transaction amount. You can also use + to replace it with multiple transactions.",
+      String(existingAmount.toFixed(2))
+    );
+
+    if (nextValue === null) {
+      return;
+    }
+
+    let replacementAmounts;
+    try {
+      replacementAmounts = parseSpendExpression(nextValue);
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+
+    transactions.splice(
+      index,
+      1,
+      ...replacementAmounts.map((amount) => ({ id: createTransactionId(), amount }))
+    );
+    data.transactionsByDate[date] = transactions;
+    expandedDates.add(date);
+    saveData(data);
+    render();
+  }
 });
 
 if (!canUseLocalStorage) {

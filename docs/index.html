@@ -50,10 +50,10 @@
 
       <section class="right-column">
         <section class="card">
-          <h2>Today's Spend</h2>
+          <h2>Log Spend</h2>
           <form id="spend-form" class="inline-form">
             <input id="spend-date" type="date" required />
-            <input id="spend-amount" type="text" inputmode="decimal" placeholder="e.g. 8.50+7.20" required />
+            <input id="spend-amount" type="text" inputmode="decimal" placeholder="" autocomplete="off" required />
             <button type="submit">Add Spend</button>
             <button id="reset-day-btn" class="secondary" type="button">Reset Day</button>
           </form>
@@ -62,6 +62,7 @@
 
         <section class="card entries-card">
           <h2>Entries</h2>
+          <small class="entries-help">Click a day row to show or hide that day's individual transactions.</small>
           <div class="entries-table-wrap">
             <table class="entries-table">
               <thead>

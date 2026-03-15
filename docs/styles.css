@@ -277,6 +277,12 @@ button.secondary {
   overflow: auto;
 }
 
+.entries-help {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
 .entries-table {
   width: 100%;
   border-collapse: collapse;
@@ -293,7 +299,7 @@ button.secondary {
 
 .entries-table th:nth-child(1),
 .entries-table td:nth-child(1) {
-  width: 54px;
+  width: 88px;
 }
 
 .entries-table th:nth-child(3),
@@ -312,6 +318,85 @@ button.secondary {
   position: sticky;
   top: 0;
   background: #f9fbf9;
+}
+
+.day-toggle {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-start;
+  background: transparent;
+  color: var(--ink);
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.day-toggle:hover {
+  filter: none;
+  color: var(--accent);
+}
+
+.day-toggle-marker {
+  width: 1rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.entry-detail-row td {
+  padding: 0;
+  background: #f9fbf9;
+}
+
+.transactions-panel {
+  padding: 0.5rem 0.6rem 0.7rem 1rem;
+}
+
+.transactions-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.transactions-table th,
+.transactions-table td {
+  padding: 0.3rem 0.25rem;
+  border-bottom: 1px solid #e5ece8;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.transactions-table th:nth-child(1),
+.transactions-table td:nth-child(1) {
+  width: 92px;
+}
+
+.transactions-table th:nth-child(2),
+.transactions-table td:nth-child(2) {
+  width: 96px;
+  text-align: right;
+}
+
+.transactions-table th:nth-child(3),
+.transactions-table td:nth-child(3) {
+  width: 150px;
+  text-align: right;
+}
+
+.transaction-actions {
+  white-space: nowrap;
+}
+
+.transaction-btn {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.74rem;
+  margin-left: 0.25rem;
 }
 
 .entries-table td.spend-under {
