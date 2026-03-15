@@ -71,6 +71,13 @@ function setTrendDisplay(value) {
   statTrend.innerHTML = `<span class="${signClass}">${sign}</span><span class="trend-value">${amount}</span><span class="${signClass}" aria-hidden="true">${sign}</span>`;
 }
 
+function focusExpandedDate(date) {
+  expandedDates.clear();
+  if (date) {
+    expandedDates.add(date);
+  }
+}
+
 function createTransactionId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }
@@ -84,11 +91,12 @@ function parseSpendExpression(rawInput) {
     throw new Error("Use amounts like 12.50 or sums like 8.50+7.20.");
   }
 
-  return cleaned
+  const total = cleaned
     .split("+")
     .map((part) => Number(part))
-    .map((value) => roundMoney(value))
-    .filter((value) => value > 0);
+    .reduce((sum, value) => sum + value, 0);
+
+  return roundMoney(total);
 }
 
 function formatIsoDate(date) {
@@ -572,15 +580,15 @@ setupForm.addEventListener("submit", (event) => {
 spendForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  let amounts;
+  let amount;
   try {
-    amounts = parseSpendExpression(spendAmountInput.value);
+    amount = parseSpendExpression(spendAmountInput.value);
   } catch (error) {
     alert(error.message);
     return;
   }
 
-  if (!amounts.length) return;
+  if (amount <= 0) return;
 
   const data = loadData();
   const validDates = getPeriodDates(data.startDate || todayIso);
@@ -590,10 +598,11 @@ spendForm.addEventListener("submit", (event) => {
   }
 
   const transactions = data.transactionsByDate[spendDateInput.value] || [];
-  data.transactionsByDate[spendDateInput.value] = transactions.concat(
-    amounts.map((amount) => ({ id: createTransactionId(), amount }))
-  );
-  expandedDates.add(spendDateInput.value);
+  data.transactionsByDate[spendDateInput.value] = transactions.concat({
+    id: createTransactionId(),
+    amount,
+  });
+  focusExpandedDate(spendDateInput.value);
   saveData(data);
 
   spendAmountInput.value = "";
@@ -609,7 +618,7 @@ resetDayBtn.addEventListener("click", () => {
   }
 
   data.transactionsByDate[spendDateInput.value] = [];
-  expandedDates.add(spendDateInput.value);
+  focusExpandedDate(spendDateInput.value);
   saveData(data);
   render();
 });
@@ -676,7 +685,7 @@ entriesBody.addEventListener("click", (event) => {
   if (action === "delete-transaction") {
     transactions.splice(index, 1);
     data.transactionsByDate[date] = transactions;
-    expandedDates.add(date);
+    focusExpandedDate(date);
     saveData(data);
     render();
     return;
@@ -685,7 +694,7 @@ entriesBody.addEventListener("click", (event) => {
   if (action === "edit-transaction") {
     const existingAmount = transactions[index].amount;
     const nextValue = window.prompt(
-      "Update this transaction amount. You can also use + to replace it with multiple transactions.",
+      "Update this transaction amount. You can use + to calculate a single replacement amount.",
       String(existingAmount.toFixed(2))
     );
 
@@ -693,9 +702,9 @@ entriesBody.addEventListener("click", (event) => {
       return;
     }
 
-    let replacementAmounts;
+    let replacementAmount;
     try {
-      replacementAmounts = parseSpendExpression(nextValue);
+      replacementAmount = parseSpendExpression(nextValue);
     } catch (error) {
       alert(error.message);
       return;
@@ -704,10 +713,10 @@ entriesBody.addEventListener("click", (event) => {
     transactions.splice(
       index,
       1,
-      ...replacementAmounts.map((amount) => ({ id: createTransactionId(), amount }))
+      { id: createTransactionId(), amount: replacementAmount }
     );
     data.transactionsByDate[date] = transactions;
-    expandedDates.add(date);
+    focusExpandedDate(date);
     saveData(data);
     render();
   }
