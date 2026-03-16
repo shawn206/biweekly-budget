@@ -590,6 +590,13 @@ setupForm.addEventListener("submit", (event) => {
 });
 
 nextPeriodBtn.addEventListener("click", () => {
+  const confirmNextPeriod = window.confirm(
+    "Move to the next 14-day period? This will delete the current log entries and reset the budget for the new period."
+  );
+  if (!confirmNextPeriod) {
+    return;
+  }
+
   const current = loadData();
   const startDate = startDateInput.value || current.startDate || todayIso;
   const nextStartDate = shiftIsoDate(startDate, PERIOD_DAYS);
