@@ -57,14 +57,15 @@
           <small class="pane-help">Entries are stored only in your browser on this computer.</small>
           <form id="spend-form" class="inline-form">
             <input id="spend-date" type="date" required />
-            <input id="spend-amount" type="text" inputmode="decimal" placeholder="" autocomplete="off" required />
-            <input id="spend-note" type="text" placeholder="Note (optional)" autocomplete="off" />
+            <input id="spend-amount" type="text" inputmode="decimal" placeholder="Amount" autocomplete="off" required />
+            <input id="spend-note" name="spend-note" type="text" placeholder="Note" autocomplete="on" list="note-suggestions" />
             <button type="submit">Add Spend</button>
             <label class="pending-toggle">
               <input id="spend-pending" type="checkbox" />
               Pending
             </label>
           </form>
+          <datalist id="note-suggestions"></datalist>
         </section>
 
         <section class="card entries-card">

@@ -10,6 +10,7 @@ const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
 const spendNoteInput = document.getElementById("spend-note");
 const spendPendingInput = document.getElementById("spend-pending");
+const noteSuggestions = document.getElementById("note-suggestions");
 const resetBtn = document.getElementById("reset-btn");
 const nextPeriodBtn = document.getElementById("next-period-btn");
 const exportBtn = document.getElementById("export-btn");
@@ -235,6 +236,35 @@ function dayTotalsFromTransactions(transactionsByDate, startDateIso) {
   return totals;
 }
 
+function collectTransactionNotes(transactionsByDate) {
+  const uniqueNotes = new Set();
+
+  Object.values(transactionsByDate).forEach((transactions) => {
+    (transactions || []).forEach((transaction) => {
+      const note = typeof transaction.note === "string" ? transaction.note.trim() : "";
+      if (note) {
+        uniqueNotes.add(note);
+      }
+    });
+  });
+
+  return Array.from(uniqueNotes).sort((a, b) => a.localeCompare(b));
+}
+
+function renderNoteSuggestions(transactionsByDate) {
+  if (!noteSuggestions) {
+    return;
+  }
+
+  noteSuggestions.innerHTML = "";
+  collectTransactionNotes(transactionsByDate)
+    .forEach((note) => {
+      const option = document.createElement("option");
+      option.value = note;
+      noteSuggestions.appendChild(option);
+    });
+}
+
 function coerceDataForSave(rawData) {
   const startDate = typeof rawData?.startDate === "string" && rawData.startDate ? rawData.startDate : todayIso;
   const totalBudget = Number(rawData?.totalBudget || 0);
@@ -271,6 +301,37 @@ function loadData() {
   } catch {
     return coerceDataForSave({});
   }
+}
+
+function render() {
+  const data = loadData();
+  const entriesByDate = dayTotalsFromTransactions(data.transactionsByDate, data.startDate || todayIso);
+  const spent = computeSpent(data.transactionsByDate);
+  const total = Number(data.totalBudget || 0);
+  const perDayBudget = dailyBudget(total);
+  const trendAmount = currentTrendAmount(data.startDate || todayIso, entriesByDate, perDayBudget);
+  const elapsed = elapsedDays(data.startDate || todayIso);
+  const remaining = total - spent;
+  const remainingForMeter = meterRemainingAmount(remaining, perDayBudget, elapsed);
+  const remainingPct = total > 0 ? Math.max(0, Math.min(100, (remainingForMeter / total) * 100)) : 0;
+  const color = trendColor(trendAmount, perDayBudget);
+
+  startDateInput.value = data.startDate || todayIso;
+  totalBudgetInput.value = total > 0 ? total : "";
+
+  statTotal.textContent = currency(total);
+  statDailyBudget.textContent = currency(perDayBudget);
+  setTrendDisplay(trendAmount);
+  statTrend.className = `meter-trend ${trendAmount > 0 ? "trend-positive" : trendAmount < 0 ? "trend-negative" : "trend-neutral"}`;
+  statSpent.textContent = currency(spent);
+  statRemaining.textContent = currency(remaining);
+  statDaysLeft.textContent = String(daysLeft(data.startDate || todayIso));
+  meterFill.style.height = `${remainingPct}%`;
+  meterFill.style.background = `linear-gradient(0deg, ${color}, ${color})`;
+
+  renderTicks(data.startDate || todayIso);
+  renderEntries(data.startDate || todayIso, entriesByDate, data.transactionsByDate, perDayBudget);
+  renderNoteSuggestions(data.transactionsByDate);
 }
 
 function saveData(data) {
@@ -579,35 +640,6 @@ function importDataFromText(text) {
   render();
 }
 
-function render() {
-  const data = loadData();
-  const entriesByDate = dayTotalsFromTransactions(data.transactionsByDate, data.startDate || todayIso);
-  const spent = computeSpent(data.transactionsByDate);
-  const total = Number(data.totalBudget || 0);
-  const perDayBudget = dailyBudget(total);
-  const trendAmount = currentTrendAmount(data.startDate || todayIso, entriesByDate, perDayBudget);
-  const elapsed = elapsedDays(data.startDate || todayIso);
-  const remaining = total - spent;
-  const remainingForMeter = meterRemainingAmount(remaining, perDayBudget, elapsed);
-  const remainingPct = total > 0 ? Math.max(0, Math.min(100, (remainingForMeter / total) * 100)) : 0;
-  const color = trendColor(trendAmount, perDayBudget);
-
-  startDateInput.value = data.startDate || todayIso;
-  totalBudgetInput.value = total > 0 ? total : "";
-
-  statTotal.textContent = currency(total);
-  statDailyBudget.textContent = currency(perDayBudget);
-  setTrendDisplay(trendAmount);
-  statTrend.className = `meter-trend ${trendAmount > 0 ? "trend-positive" : trendAmount < 0 ? "trend-negative" : "trend-neutral"}`;
-  statSpent.textContent = currency(spent);
-  statRemaining.textContent = currency(remaining);
-  statDaysLeft.textContent = String(daysLeft(data.startDate || todayIso));
-  meterFill.style.height = `${remainingPct}%`;
-  meterFill.style.background = `linear-gradient(0deg, ${color}, ${color})`;
-
-  renderTicks(data.startDate || todayIso);
-  renderEntries(data.startDate || todayIso, entriesByDate, data.transactionsByDate, perDayBudget);
-}
 
 setupForm.addEventListener("submit", (event) => {
   event.preventDefault();
