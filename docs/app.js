@@ -8,6 +8,7 @@ const startDateInput = document.getElementById("start-date");
 const totalBudgetInput = document.getElementById("total-budget");
 const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
+const spendPendingInput = document.getElementById("spend-pending");
 const resetBtn = document.getElementById("reset-btn");
 const resetDayBtn = document.getElementById("reset-day-btn");
 const nextPeriodBtn = document.getElementById("next-period-btn");
@@ -160,7 +161,7 @@ function normalizeEntriesByDate(parsedEntries, startDateIso) {
 function normalizeTransaction(rawTransaction) {
   if (typeof rawTransaction === "number") {
     return rawTransaction > 0
-      ? { id: createTransactionId(), amount: roundMoney(rawTransaction) }
+      ? { id: createTransactionId(), amount: roundMoney(rawTransaction), pending: false }
       : null;
   }
 
@@ -176,12 +177,13 @@ function normalizeTransaction(rawTransaction) {
   return {
     id: typeof rawTransaction.id === "string" && rawTransaction.id ? rawTransaction.id : createTransactionId(),
     amount,
+    pending: Boolean(rawTransaction.pending),
   };
 }
 
 function transactionsFromAmount(amount) {
   const rounded = roundMoney(Number(amount || 0));
-  return rounded > 0 ? [{ id: createTransactionId(), amount: rounded }] : [];
+  return rounded > 0 ? [{ id: createTransactionId(), amount: rounded, pending: false }] : [];
 }
 
 function normalizeTransactionsByDate(parsedTransactions, startDateIso, fallbackEntries) {
@@ -403,8 +405,9 @@ function renderTransactions(date, transactions) {
     <table class="transactions-table">
       <thead>
         <tr>
-          <th>Transaction</th>
+          <th></th>
           <th>Amount</th>
+          <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -415,6 +418,17 @@ function renderTransactions(date, transactions) {
               <tr>
                 <td>${index + 1}</td>
                 <td>${currency(transaction.amount)}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="pending-chip pending-chip-button ${transaction.pending ? "is-pending" : "is-cleared"}"
+                    data-action="toggle-pending"
+                    data-date="${date}"
+                    data-id="${transaction.id}"
+                  >
+                    ${transaction.pending ? "Pending" : "Cleared"}
+                  </button>
+                </td>
                 <td class="transaction-actions">
                   <button type="button" class="secondary transaction-btn" data-action="edit-transaction" data-date="${date}" data-id="${transaction.id}">Edit</button>
                   <button type="button" class="secondary transaction-btn" data-action="delete-transaction" data-date="${date}" data-id="${transaction.id}">Delete</button>
@@ -436,6 +450,8 @@ function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDa
   for (let i = 0; i < dates.length; i += 1) {
     const date = dates[i];
     const tr = document.createElement("tr");
+    const dayTransactions = transactionsByDate[date] || [];
+    const hasPending = dayTransactions.some((transaction) => transaction.pending);
     if (date === todayIso) {
       tr.classList.add("today-row");
     }
@@ -455,7 +471,12 @@ function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDa
     `;
 
     const dateCell = document.createElement("td");
-    dateCell.textContent = formatDisplayDate(date);
+    dateCell.innerHTML = `
+      <div class="entry-date-cell">
+        <span>${formatDisplayDate(date)}</span>
+        ${hasPending ? '<span class="pending-chip is-pending">Pending</span>' : ""}
+      </div>
+    `;
 
     const amountCell = document.createElement("td");
     const spendAmount = roundMoney(Number(entriesByDate[date] || 0));
@@ -506,7 +527,7 @@ function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDa
     detailCell.colSpan = 4;
     detailCell.innerHTML = `
       <div class="transactions-panel">
-        ${renderTransactions(date, transactionsByDate[date] || [])}
+        ${renderTransactions(date, dayTransactions)}
       </div>
     `;
 
@@ -636,11 +657,13 @@ spendForm.addEventListener("submit", (event) => {
   data.transactionsByDate[spendDateInput.value] = transactions.concat({
     id: createTransactionId(),
     amount,
+    pending: spendPendingInput.checked,
   });
   focusExpandedDate(spendDateInput.value);
   saveData(data);
 
   spendAmountInput.value = "";
+  spendPendingInput.checked = false;
   render();
 });
 
@@ -726,6 +749,18 @@ entriesBody.addEventListener("click", (event) => {
     return;
   }
 
+  if (action === "toggle-pending") {
+    transactions[index] = {
+      ...transactions[index],
+      pending: !transactions[index].pending,
+    };
+    data.transactionsByDate[date] = transactions;
+    focusExpandedDate(date);
+    saveData(data);
+    render();
+    return;
+  }
+
   if (action === "edit-transaction") {
     const existingAmount = transactions[index].amount;
     const nextValue = window.prompt(
@@ -748,7 +783,7 @@ entriesBody.addEventListener("click", (event) => {
     transactions.splice(
       index,
       1,
-      { id: createTransactionId(), amount: replacementAmount }
+      { ...transactions[index], amount: replacementAmount }
     );
     data.transactionsByDate[date] = transactions;
     focusExpandedDate(date);

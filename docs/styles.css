@@ -91,6 +91,20 @@ h1,
   min-width: 0;
 }
 
+.pending-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.pending-toggle input {
+  margin: 0;
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -358,6 +372,12 @@ button.secondary {
   text-align: right;
 }
 
+.entry-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .entries-table thead th {
   position: sticky;
   top: 0;
@@ -402,9 +422,9 @@ button.secondary {
 }
 
 .transactions-table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .transactions-table th,
@@ -413,23 +433,31 @@ button.secondary {
   border-bottom: 1px solid #e5ece8;
   font-size: 0.8rem;
   text-align: left;
+  white-space: nowrap;
 }
 
 .transactions-table th:nth-child(1),
 .transactions-table td:nth-child(1) {
-  width: 86px;
+  width: 1%;
 }
 
 .transactions-table th:nth-child(2),
 .transactions-table td:nth-child(2) {
-  width: 88px;
   text-align: right;
 }
 
 .transactions-table th:nth-child(3),
 .transactions-table td:nth-child(3) {
-  width: 96px;
+  text-align: center;
+}
+
+.transactions-table th:nth-child(4),
+.transactions-table td:nth-child(4) {
   text-align: right;
+}
+
+.transactions-table th:nth-child(4) {
+  text-align: center;
 }
 
 .transaction-actions {
@@ -440,6 +468,34 @@ button.secondary {
   padding: 0.2rem 0.45rem;
   font-size: 0.74rem;
   margin-left: 0.25rem;
+}
+
+.pending-chip {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.pending-chip-button {
+  border: none;
+  cursor: pointer;
+}
+
+.pending-chip-button:hover {
+  filter: brightness(0.98);
+}
+
+.pending-chip.is-pending {
+  background: #f5e7c8;
+  color: #7a5712;
+}
+
+.pending-chip.is-cleared {
+  background: #e2eee8;
+  color: #345f4d;
 }
 
 .entries-table td.spend-under {
