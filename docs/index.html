@@ -52,19 +52,19 @@
       </aside>
 
       <section class="right-column">
-        <section class="card">
+        <section class="card log-spend-card">
           <h2>Log Spend</h2>
+          <small class="pane-help">Entries are stored only in your browser on this computer.</small>
           <form id="spend-form" class="inline-form">
             <input id="spend-date" type="date" required />
             <input id="spend-amount" type="text" inputmode="decimal" placeholder="" autocomplete="off" required />
+            <input id="spend-note" type="text" placeholder="Note (optional)" autocomplete="off" />
             <button type="submit">Add Spend</button>
-            <button id="reset-day-btn" class="secondary" type="button">Reset Day</button>
             <label class="pending-toggle">
               <input id="spend-pending" type="checkbox" />
               Pending
             </label>
           </form>
-          <small>Entries are stored only in your browser on this computer.</small>
         </section>
 
         <section class="card entries-card">

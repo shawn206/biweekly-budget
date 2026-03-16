@@ -62,6 +62,10 @@ h1,
   margin-top: 0;
 }
 
+.log-spend-card {
+  align-items: flex-start;
+}
+
 .status,
 .entries-card {
   display: flex;
@@ -81,14 +85,31 @@ h1,
 }
 
 .inline-form {
-  display: flex;
+  display: grid;
+  grid-template-columns: 152px 92px minmax(120px, 180px);
   gap: 0.6rem;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: start;
+  width: fit-content;
+}
+
+#spend-date {
+  width: 152px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 #spend-amount {
-  flex: 1 1 180px;
+  width: 92px;
+  max-width: 100%;
   min-width: 0;
+}
+
+#spend-note {
+  width: 160px;
+  max-width: 100%;
+  min-width: 0;
+  justify-self: start;
 }
 
 .pending-toggle {
@@ -98,11 +119,25 @@ h1,
   gap: 0.45rem;
   font-weight: 600;
   white-space: nowrap;
-  margin-left: auto;
+  justify-self: start;
+  margin-left: 0.5rem;
 }
 
 .pending-toggle input {
   margin: 0;
+}
+
+.inline-form > button,
+.inline-form > .pending-toggle {
+  grid-row: 2;
+}
+
+.inline-form > button[type="submit"] {
+  grid-column: 1;
+}
+
+.inline-form > .pending-toggle {
+  grid-column: 2;
 }
 
 label {
@@ -334,6 +369,12 @@ button.secondary {
   margin-bottom: 0.6rem;
 }
 
+.pane-help {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+
 .entries-table {
   width: auto;
   border-collapse: collapse;
@@ -488,6 +529,19 @@ button.secondary {
   filter: brightness(0.98);
 }
 
+.transaction-amount-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.transaction-note {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
 .pending-chip.is-pending {
   background: #f5e7c8;
   color: #7a5712;
@@ -557,6 +611,51 @@ button.secondary {
 
   .tick-label {
     font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .log-spend-card {
+    align-items: stretch;
+  }
+
+  .inline-form {
+    display: grid;
+    grid-template-columns: 140px 84px minmax(72px, 1fr);
+    width: 100%;
+  }
+
+  #spend-date {
+    width: 140px;
+  }
+
+  #spend-amount {
+    width: 84px;
+  }
+
+  #spend-note {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 620px) {
+  .inline-form {
+    grid-template-columns: 132px 80px minmax(0, 1fr);
+    width: 100%;
+  }
+
+  #spend-date {
+    width: 132px;
+  }
+
+  #spend-amount {
+    width: 80px;
+  }
+
+  #spend-note {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 

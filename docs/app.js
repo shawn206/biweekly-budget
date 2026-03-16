@@ -8,9 +8,9 @@ const startDateInput = document.getElementById("start-date");
 const totalBudgetInput = document.getElementById("total-budget");
 const spendDateInput = document.getElementById("spend-date");
 const spendAmountInput = document.getElementById("spend-amount");
+const spendNoteInput = document.getElementById("spend-note");
 const spendPendingInput = document.getElementById("spend-pending");
 const resetBtn = document.getElementById("reset-btn");
-const resetDayBtn = document.getElementById("reset-day-btn");
 const nextPeriodBtn = document.getElementById("next-period-btn");
 const exportBtn = document.getElementById("export-btn");
 const importBtn = document.getElementById("import-btn");
@@ -161,7 +161,7 @@ function normalizeEntriesByDate(parsedEntries, startDateIso) {
 function normalizeTransaction(rawTransaction) {
   if (typeof rawTransaction === "number") {
     return rawTransaction > 0
-      ? { id: createTransactionId(), amount: roundMoney(rawTransaction), pending: false }
+      ? { id: createTransactionId(), amount: roundMoney(rawTransaction), pending: false, note: "" }
       : null;
   }
 
@@ -178,12 +178,22 @@ function normalizeTransaction(rawTransaction) {
     id: typeof rawTransaction.id === "string" && rawTransaction.id ? rawTransaction.id : createTransactionId(),
     amount,
     pending: Boolean(rawTransaction.pending),
+    note: typeof rawTransaction.note === "string" ? rawTransaction.note.trim() : "",
   };
 }
 
 function transactionsFromAmount(amount) {
   const rounded = roundMoney(Number(amount || 0));
-  return rounded > 0 ? [{ id: createTransactionId(), amount: rounded, pending: false }] : [];
+  return rounded > 0 ? [{ id: createTransactionId(), amount: rounded, pending: false, note: "" }] : [];
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function normalizeTransactionsByDate(parsedTransactions, startDateIso, fallbackEntries) {
@@ -417,7 +427,12 @@ function renderTransactions(date, transactions) {
             return `
               <tr>
                 <td>${index + 1}</td>
-                <td>${currency(transaction.amount)}</td>
+                <td>
+                  <div class="transaction-amount-cell">
+                    <span>${currency(transaction.amount)}</span>
+                    ${transaction.note ? `<span class="transaction-note">${escapeHtml(transaction.note)}</span>` : ""}
+                  </div>
+                </td>
                 <td>
                   <button
                     type="button"
@@ -431,6 +446,7 @@ function renderTransactions(date, transactions) {
                 </td>
                 <td class="transaction-actions">
                   <button type="button" class="secondary transaction-btn" data-action="edit-transaction" data-date="${date}" data-id="${transaction.id}">Edit</button>
+                  <button type="button" class="secondary transaction-btn" data-action="edit-note" data-date="${date}" data-id="${transaction.id}">Note</button>
                   <button type="button" class="secondary transaction-btn" data-action="delete-transaction" data-date="${date}" data-id="${transaction.id}">Delete</button>
                 </td>
               </tr>
@@ -658,26 +674,14 @@ spendForm.addEventListener("submit", (event) => {
     id: createTransactionId(),
     amount,
     pending: spendPendingInput.checked,
+    note: spendNoteInput.value.trim(),
   });
   focusExpandedDate(spendDateInput.value);
   saveData(data);
 
   spendAmountInput.value = "";
+  spendNoteInput.value = "";
   spendPendingInput.checked = false;
-  render();
-});
-
-resetDayBtn.addEventListener("click", () => {
-  const data = loadData();
-  const validDates = getPeriodDates(data.startDate || todayIso);
-  if (!validDates.includes(spendDateInput.value)) {
-    alert("Selected date must be within the current 14-day period.");
-    return;
-  }
-
-  data.transactionsByDate[spendDateInput.value] = [];
-  focusExpandedDate(spendDateInput.value);
-  saveData(data);
   render();
 });
 
@@ -753,6 +757,24 @@ entriesBody.addEventListener("click", (event) => {
     transactions[index] = {
       ...transactions[index],
       pending: !transactions[index].pending,
+    };
+    data.transactionsByDate[date] = transactions;
+    focusExpandedDate(date);
+    saveData(data);
+    render();
+    return;
+  }
+
+  if (action === "edit-note") {
+    const nextNote = window.prompt("Update this transaction note.", transactions[index].note || "");
+
+    if (nextNote === null) {
+      return;
+    }
+
+    transactions[index] = {
+      ...transactions[index],
+      note: nextNote.trim(),
     };
     data.transactionsByDate[date] = transactions;
     focusExpandedDate(date);
