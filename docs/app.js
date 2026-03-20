@@ -90,12 +90,12 @@ function parseSpendExpression(rawInput) {
   if (!cleaned) {
     throw new Error("Enter an amount.");
   }
-  if (!/^\d+(\.\d{1,2})?(\+\d+(\.\d{1,2})?)*$/.test(cleaned)) {
-    throw new Error("Use amounts like 12.50 or sums like 8.50+7.20.");
+  if (!/^(?:\d+|\d*\.\d{1,2})(?:[+-](?:\d+|\d*\.\d{1,2}))*$/.test(cleaned)) {
+    throw new Error("Use amounts like 12.50 or expressions like 8.50+7.20-1.00.");
   }
 
-  const total = cleaned
-    .split("+")
+  const tokens = cleaned.match(/[+-]?(?:\d+|\d*\.\d{1,2})/g) || [];
+  const total = tokens
     .map((part) => Number(part))
     .reduce((sum, value) => sum + value, 0);
 
@@ -321,7 +321,7 @@ function render() {
 
   statTotal.textContent = currency(total);
   statDailyBudget.textContent = currency(perDayBudget);
-  setTrendDisplay(trendAmount);
+  setTrendDisplay(remaining);
   statTrend.className = `meter-trend ${trendAmount > 0 ? "trend-positive" : trendAmount < 0 ? "trend-negative" : "trend-neutral"}`;
   statSpent.textContent = currency(spent);
   statRemaining.textContent = currency(remaining);
