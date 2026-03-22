@@ -321,7 +321,7 @@ function render() {
 
   statTotal.textContent = currency(total);
   statDailyBudget.textContent = currency(perDayBudget);
-  setTrendDisplay(remaining);
+  setTrendDisplay(trendAmount);
   statTrend.className = `meter-trend ${trendAmount > 0 ? "trend-positive" : trendAmount < 0 ? "trend-negative" : "trend-neutral"}`;
   statSpent.textContent = currency(spent);
   statRemaining.textContent = currency(remaining);
@@ -363,22 +363,20 @@ function dailyBudget(totalBudget) {
 function currentTrendAmount(startDateIso, entriesByDate, targetDailyBudget) {
   const dates = getPeriodDates(startDateIso);
   let cumulativeSpend = 0;
+  let finalTrendAmount = 0;
 
   for (let i = 0; i < dates.length; i += 1) {
     const date = dates[i];
-    if (date > todayIso) {
-      break;
-    }
-
     cumulativeSpend = roundMoney(cumulativeSpend + Number(entriesByDate[date] || 0));
+    const expectedSpendToDate = roundMoney(targetDailyBudget * (i + 1));
+    finalTrendAmount = roundMoney(expectedSpendToDate - cumulativeSpend);
 
-    if (date === todayIso) {
-      const expectedSpendToDate = roundMoney(targetDailyBudget * (i + 1));
-      return roundMoney(expectedSpendToDate - cumulativeSpend);
+    if (date >= todayIso) {
+      return finalTrendAmount;
     }
   }
 
-  return 0;
+  return finalTrendAmount;
 }
 
 function daysLeft(startDate) {
