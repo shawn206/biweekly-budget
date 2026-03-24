@@ -511,6 +511,35 @@ button.secondary {
   margin-left: 0.25rem;
 }
 
+.edit-dialog {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  max-width: 340px;
+  width: calc(100% - 2rem);
+}
+
+.edit-dialog::backdrop {
+  background: rgba(27, 43, 36, 0.28);
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+
+.edit-form h2 {
+  margin: 0;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .pending-chip {
   display: inline-block;
   padding: 0.15rem 0.45rem;

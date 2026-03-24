@@ -18,6 +18,12 @@ const importBtn = document.getElementById("import-btn");
 const importFileInput = document.getElementById("import-file");
 const entriesBody = document.getElementById("entries-body");
 const meterTicks = document.getElementById("meter-ticks");
+const editDialog = document.getElementById("edit-transaction-dialog");
+const editForm = document.getElementById("edit-transaction-form");
+const editAmountInput = document.getElementById("edit-amount");
+const editDateInput = document.getElementById("edit-date");
+const editNoteInput = document.getElementById("edit-note");
+const editCancelBtn = document.getElementById("edit-cancel-btn");
 
 const statTotal = document.getElementById("stat-total");
 const statDailyBudget = document.getElementById("stat-daily-budget");
@@ -27,6 +33,7 @@ const statRemaining = document.getElementById("stat-remaining");
 const statDaysLeft = document.getElementById("stat-days-left");
 const meterFill = document.getElementById("meter-fill");
 const expandedDates = new Set();
+let activeEditContext = null;
 
 function localIsoDate() {
   const now = new Date();
@@ -505,7 +512,6 @@ function renderTransactions(date, transactions) {
                 </td>
                 <td class="transaction-actions">
                   <button type="button" class="secondary transaction-btn" data-action="edit-transaction" data-date="${date}" data-id="${transaction.id}">Edit</button>
-                  <button type="button" class="secondary transaction-btn" data-action="edit-note" data-date="${date}" data-id="${transaction.id}">Note</button>
                   <button type="button" class="secondary transaction-btn" data-action="delete-transaction" data-date="${date}" data-id="${transaction.id}">Delete</button>
                 </td>
               </tr>
@@ -636,6 +642,20 @@ function importDataFromText(text) {
   const data = coerceDataForSave(source);
   saveData(data);
   render();
+}
+
+function openEditDialog(date, transaction) {
+  activeEditContext = { date, id: transaction.id };
+  editAmountInput.value = transaction.amount.toFixed(2);
+  editDateInput.value = date;
+  editNoteInput.value = transaction.note || "";
+  editDialog.showModal();
+}
+
+function closeEditDialog() {
+  activeEditContext = null;
+  editForm.reset();
+  editDialog.close();
 }
 
 
@@ -795,53 +815,60 @@ entriesBody.addEventListener("click", (event) => {
     return;
   }
 
-  if (action === "edit-note") {
-    const nextNote = window.prompt("Update this transaction note.", transactions[index].note || "");
+  if (action === "edit-transaction") {
+    openEditDialog(date, transactions[index]);
+    return;
+  }
+});
 
-    if (nextNote === null) {
-      return;
-    }
+editForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!activeEditContext) {
+    return;
+  }
 
-    transactions[index] = {
-      ...transactions[index],
-      note: nextNote.trim(),
-    };
-    data.transactionsByDate[date] = transactions;
-    focusExpandedDate(date);
-    saveData(data);
+  let replacementAmount;
+  try {
+    replacementAmount = parseSpendExpression(editAmountInput.value);
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const data = loadData();
+  const validDates = getPeriodDates(data.startDate || todayIso);
+  const nextDate = editDateInput.value;
+  if (!validDates.includes(nextDate)) {
+    alert("Transaction date must stay within the current 14-day period.");
+    return;
+  }
+
+  const sourceDate = activeEditContext.date;
+  const sourceTransactions = [...(data.transactionsByDate[sourceDate] || [])];
+  const index = sourceTransactions.findIndex((transaction) => transaction.id === activeEditContext.id);
+  if (index === -1) {
+    closeEditDialog();
     render();
     return;
   }
 
-  if (action === "edit-transaction") {
-    const existingAmount = transactions[index].amount;
-    const nextValue = window.prompt(
-      "Update this transaction amount. You can use + to calculate a single replacement amount.",
-      String(existingAmount.toFixed(2))
-    );
+  const updatedTransaction = {
+    ...sourceTransactions[index],
+    amount: replacementAmount,
+    note: editNoteInput.value.trim(),
+  };
 
-    if (nextValue === null) {
-      return;
-    }
+  sourceTransactions.splice(index, 1);
+  data.transactionsByDate[sourceDate] = sourceTransactions;
+  data.transactionsByDate[nextDate] = (data.transactionsByDate[nextDate] || []).concat(updatedTransaction);
+  focusExpandedDate(nextDate);
+  saveData(data);
+  closeEditDialog();
+  render();
+});
 
-    let replacementAmount;
-    try {
-      replacementAmount = parseSpendExpression(nextValue);
-    } catch (error) {
-      alert(error.message);
-      return;
-    }
-
-    transactions.splice(
-      index,
-      1,
-      { ...transactions[index], amount: replacementAmount }
-    );
-    data.transactionsByDate[date] = transactions;
-    focusExpandedDate(date);
-    saveData(data);
-    render();
-  }
+editCancelBtn.addEventListener("click", () => {
+  closeEditDialog();
 });
 
 if (!canUseLocalStorage) {

@@ -95,6 +95,28 @@
     </div>
   </main>
 
+  <dialog id="edit-transaction-dialog" class="edit-dialog">
+    <form id="edit-transaction-form" class="edit-form" method="dialog">
+      <h2>Edit Transaction</h2>
+      <label>
+        Amount
+        <input id="edit-amount" type="text" inputmode="decimal" required />
+      </label>
+      <label>
+        Date
+        <input id="edit-date" type="date" required />
+      </label>
+      <label>
+        Note
+        <input id="edit-note" type="text" autocomplete="off" />
+      </label>
+      <div class="edit-actions">
+        <button id="edit-cancel-btn" class="secondary" type="button">Cancel</button>
+        <button type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
