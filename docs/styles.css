@@ -125,6 +125,14 @@ h1,
 
 .pending-toggle input {
   margin: 0;
+  width: 0.78rem;
+  height: 0.78rem;
+  accent-color: var(--accent);
+}
+
+.pending-label-text {
+  position: relative;
+  top: -1px;
 }
 
 .inline-form > button,
