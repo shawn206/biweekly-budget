@@ -874,8 +874,13 @@ editForm.addEventListener("submit", (event) => {
   };
 
   sourceTransactions.splice(index, 1);
-  data.transactionsByDate[sourceDate] = sourceTransactions;
-  data.transactionsByDate[nextDate] = (data.transactionsByDate[nextDate] || []).concat(updatedTransaction);
+  if (nextDate === sourceDate) {
+    sourceTransactions.splice(index, 0, updatedTransaction);
+    data.transactionsByDate[sourceDate] = sourceTransactions;
+  } else {
+    data.transactionsByDate[sourceDate] = sourceTransactions;
+    data.transactionsByDate[nextDate] = (data.transactionsByDate[nextDate] || []).concat(updatedTransaction);
+  }
   focusExpandedDate(nextDate);
   saveData(data);
   closeEditDialog();
