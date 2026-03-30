@@ -23,6 +23,7 @@ const editForm = document.getElementById("edit-transaction-form");
 const editAmountInput = document.getElementById("edit-amount");
 const editDateInput = document.getElementById("edit-date");
 const editNoteInput = document.getElementById("edit-note");
+const editPendingToggleBtn = document.getElementById("edit-pending-toggle-btn");
 const editCancelBtn = document.getElementById("edit-cancel-btn");
 
 const statTotal = document.getElementById("stat-total");
@@ -34,6 +35,7 @@ const statDaysLeft = document.getElementById("stat-days-left");
 const meterFill = document.getElementById("meter-fill");
 const expandedDates = new Set();
 let activeEditContext = null;
+let editPendingValue = false;
 
 function localIsoDate() {
   const now = new Date();
@@ -649,13 +651,25 @@ function openEditDialog(date, transaction) {
   editAmountInput.value = transaction.amount.toFixed(2);
   editDateInput.value = date;
   editNoteInput.value = transaction.note || "";
+  editPendingValue = Boolean(transaction.pending);
+  renderEditPendingToggle();
   editDialog.showModal();
 }
 
 function closeEditDialog() {
   activeEditContext = null;
+  editPendingValue = false;
   editForm.reset();
   editDialog.close();
+}
+
+function renderEditPendingToggle() {
+  if (!editPendingToggleBtn) {
+    return;
+  }
+
+  editPendingToggleBtn.textContent = editPendingValue ? "Pending" : "Cleared";
+  editPendingToggleBtn.className = `pending-chip pending-chip-button ${editPendingValue ? "is-pending" : "is-cleared"}`;
 }
 
 
@@ -856,6 +870,7 @@ editForm.addEventListener("submit", (event) => {
     ...sourceTransactions[index],
     amount: replacementAmount,
     note: editNoteInput.value.trim(),
+    pending: editPendingValue,
   };
 
   sourceTransactions.splice(index, 1);
@@ -869,6 +884,11 @@ editForm.addEventListener("submit", (event) => {
 
 editCancelBtn.addEventListener("click", () => {
   closeEditDialog();
+});
+
+editPendingToggleBtn.addEventListener("click", () => {
+  editPendingValue = !editPendingValue;
+  renderEditPendingToggle();
 });
 
 if (!canUseLocalStorage) {

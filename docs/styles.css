@@ -544,8 +544,15 @@ button.secondary {
 
 .edit-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.6rem;
+}
+
+#edit-pending-toggle-btn {
+  margin-right: auto;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
 }
 
 .pending-chip {
