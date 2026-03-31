@@ -621,6 +621,9 @@ function renderEntries(startDateIso, entriesByDate, transactionsByDate, targetDa
 
 function exportData() {
   const data = loadData();
+  const periodDates = getPeriodDates(data.startDate || todayIso);
+  const periodStart = periodDates[0] || (data.startDate || todayIso);
+  const periodEnd = periodDates[periodDates.length - 1] || periodStart;
   const payload = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -631,7 +634,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `biweekly-budget-${todayIso}.json`;
+  a.download = `biweekly-budget-${periodStart}-to-${periodEnd}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
