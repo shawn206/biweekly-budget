@@ -412,6 +412,10 @@ function meterRemainingAmount(remaining, targetDailyBudget, elapsed) {
     return Math.max(0, remaining);
   }
 
+  if (remaining <= 0) {
+    return 0;
+  }
+
   if (elapsed >= 1 && elapsed <= PERIOD_DAYS) {
     return roundMoney(Math.max(0, remaining) + targetDailyBudget / 2);
   }
