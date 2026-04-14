@@ -888,7 +888,7 @@ editForm.addEventListener("submit", (event) => {
     data.transactionsByDate[sourceDate] = sourceTransactions;
     data.transactionsByDate[nextDate] = (data.transactionsByDate[nextDate] || []).concat(updatedTransaction);
   }
-  focusExpandedDate(nextDate);
+  focusExpandedDate(sourceDate);
   saveData(data);
   closeEditDialog();
   render();
