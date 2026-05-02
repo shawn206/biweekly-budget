@@ -753,6 +753,7 @@ spendForm.addEventListener("submit", (event) => {
   spendAmountInput.value = "";
   spendNoteInput.value = "";
   spendPendingInput.checked = true;
+  spendAmountInput.focus();
   render();
 });
 
